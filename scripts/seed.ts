@@ -76,6 +76,7 @@ async function seed() {
     DROP TABLE IF EXISTS coupons;
     DROP TABLE IF EXISTS team_members;
     DROP TABLE IF EXISTS teams;
+    DROP TABLE IF EXISTS refund_requests;
     DROP TABLE IF EXISTS refunds;
     DROP TABLE IF EXISTS purchases;
     DROP TABLE IF EXISTS enrollments;
@@ -190,7 +191,7 @@ async function seed() {
       },
       {
         name: "Liam Thompson",
-        email: "liam.thompson@student.dev",
+        email: "liam@example.com",
         role: UserRole.Student,
         avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=liam",
         createdAt: daysAgo(30),
@@ -386,7 +387,7 @@ By the end of this course, you'll understand why TypeScript has become the defau
       categoryId: catBySlug["programming"].id,
       status: CourseStatus.Published,
       coverImageUrl: "/images/course-typescript.svg",
-      price: 4999,
+      price: 7900,
       createdAt: daysAgo(355),
       updatedAt: daysAgo(10),
     })
@@ -2229,7 +2230,7 @@ This course is still in draft while the cluster examples are rewritten against t
     .values({
       userId: students[0].id, // Emma — bought course 1 individually
       courseId: course1.id,
-      amountPaid: 4999,
+      amountPaid: 7900,
       country: "US",
       createdAt: daysAgo(50),
     })
@@ -2260,7 +2261,7 @@ This course is still in draft while the cluster examples are rewritten against t
     .values({
       userId: students[2].id, // Olivia — bought course 1 individually
       courseId: course1.id,
-      amountPaid: 4999,
+      amountPaid: 7900,
       country: "US",
       createdAt: daysAgo(35),
     })
@@ -2270,7 +2271,7 @@ This course is still in draft while the cluster examples are rewritten against t
     .values({
       userId: students[4].id, // Sophia — bought course 1 individually
       courseId: course1.id,
-      amountPaid: 4999,
+      amountPaid: 7900,
       country: "US",
       createdAt: daysAgo(15),
     })
@@ -2346,7 +2347,7 @@ This course is still in draft while the cluster examples are rewritten against t
 
   db.update(schema.coupons)
     .set({
-      redeemedByUserId: studentByEmail("liam.thompson@student.dev").id,
+      redeemedByUserId: studentByEmail("liam@example.com").id,
       redeemedAt: daysAgo(25),
     })
     .where(eq(schema.coupons.id, seededCoupons[1].id))
@@ -2722,6 +2723,55 @@ This course is still in draft while the cluster examples are rewritten against t
     4,
     []
   );
+
+  // ─── Liam's Purchase ───
+  // One learner part-way through a recent purchase, with no Refund Request
+  // raised, so the course page offers "Request a refund". The dates count back
+  // from today, so the Refund Window is still open whenever you seed.
+
+  const liam = studentByEmail("liam@example.com");
+  db
+    .insert(schema.purchases)
+    .values({
+      userId: liam.id,
+      courseId: course1.id,
+      amountPaid: 7900,
+      country: null,
+      createdAt: daysAgo(9),
+    })
+    .run();
+  db.insert(schema.enrollments)
+    .values({
+      userId: liam.id,
+      courseId: course1.id,
+      enrolledAt: daysAgo(9),
+    })
+    .run();
+  db.insert(schema.lessonProgress)
+    .values([
+      ...course1LessonIds.slice(0, 3).map((lessonId, i) => ({
+        userId: liam.id,
+        lessonId,
+        status: LessonProgressStatus.Completed,
+        completedAt: daysAgo(8 - i),
+      })),
+      {
+        userId: liam.id,
+        lessonId: course1LessonIds[3],
+        status: LessonProgressStatus.InProgress,
+        completedAt: null,
+      },
+    ])
+    .run();
+  db.insert(schema.courseRatings)
+    .values({
+      userId: liam.id,
+      courseId: course1.id,
+      rating: 4,
+      createdAt: daysAgo(6),
+      updatedAt: daysAgo(6),
+    })
+    .run();
 
   // ─── Flush watch events ───
   // Batched: the heartbeat makes these by far the largest table, and one
